@@ -8,7 +8,7 @@ export const siteConfig = {
   /** Cómo firmas: aparece en "Quién está detrás" y en los mensajes a marcas. */
   creatorName: "Gabo",
   // Dominio público en Vercel. Si compras un dominio propio, cámbialo aquí.
-  url: "https://maestrevlogs-mediakit.vercel.app",
+  url: "https://maestrevlogs.vercel.app",
 
   contact: {
     email: "1maestre1contact@gmail.com",

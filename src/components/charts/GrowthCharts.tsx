@@ -24,14 +24,26 @@ function useKeyboardIndex(length: number) {
   return { active, setActive, onKeyDown };
 }
 
-export function SubscribersChart({ lang, t }: { lang: Locale; t: Dictionary["charts"] }) {
+export function SubscribersChart({
+  lang,
+  t,
+  live,
+}: {
+  lang: Locale;
+  t: Dictionary["charts"];
+  /** Cifra actual de YouTube: se añade como último punto si es más reciente. */
+  live?: { date: string; subscribers: number } | null;
+}) {
+  const lastSaved = subscriberHistory[subscriberHistory.length - 1];
+  const history = live && live.date > lastSaved.date ? [...subscriberHistory, live] : subscriberHistory;
   const [ref, width] = useElementWidth<HTMLDivElement>();
-  const { active, setActive, onKeyDown } = useKeyboardIndex(subscriberHistory.length);
+  const { active, setActive, onKeyDown } = useKeyboardIndex(history.length);
 
-  const times = subscriberHistory.map((d) => Date.parse(d.date));
+  const times = history.map((d) => Date.parse(d.date));
   const t0 = times[0];
   const t1 = times[times.length - 1];
-  const maxValue = Math.max(...subscriberHistory.map((d) => d.subscribers));
+  const maxValue = Math.max(...history.map((d) => d.subscribers));
+  const lastValue = history[history.length - 1].subscribers;
   const yMax = maxValue * 1.12;
   const plotW = width - M.left - M.right;
   const plotH = HEIGHT - M.top - M.bottom;
@@ -39,11 +51,12 @@ export function SubscribersChart({ lang, t }: { lang: Locale; t: Dictionary["cha
   const x = (time: number) => M.left + ((time - t0) / (t1 - t0)) * plotW;
   const y = (value: number) => M.top + plotH - (value / yMax) * plotH;
 
-  const points = subscriberHistory.map((d, i) => [x(times[i]), y(d.subscribers)] as const);
+  const points = history.map((d, i) => [x(times[i]), y(d.subscribers)] as const);
   const line = points.map(([px, py], i) => `${i ? "L" : "M"}${px.toFixed(1)},${py.toFixed(1)}`).join("");
   const area = `${line}L${points[points.length - 1][0]},${M.top + plotH}L${points[0][0]},${M.top + plotH}Z`;
-  const yTicks = [0, 1000, 2000, 3000].filter((v) => v < yMax);
-  const lastIndex = subscriberHistory.length - 1;
+  const step = yMax <= 4500 ? 1000 : yMax <= 9000 ? 2000 : yMax <= 22000 ? 5000 : 10000;
+  const yTicks = Array.from({ length: Math.floor(yMax / step) + 1 }, (_, i) => i * step).filter((v) => v < yMax);
+  const lastIndex = history.length - 1;
   const xTickIndexes = width < 420 ? [0, 7, lastIndex] : [0, 3, 7, lastIndex];
 
   function handleMove(e: PointerEvent<SVGSVGElement>) {
@@ -68,7 +81,7 @@ export function SubscribersChart({ lang, t }: { lang: Locale; t: Dictionary["cha
       table={
         <DataTable
           head={[t.date, t.subscribers]}
-          rows={subscriberHistory.map((d) => [formatDate(lang, d.date), formatNumber(lang, d.subscribers)])}
+          rows={history.map((d) => [formatDate(lang, d.date), formatNumber(lang, d.subscribers)])}
         />
       }
     >
@@ -79,7 +92,7 @@ export function SubscribersChart({ lang, t }: { lang: Locale; t: Dictionary["cha
           viewBox={`0 0 ${width} ${HEIGHT}`}
           style={{ maxWidth: "100%", height: "auto" }}
           role="img"
-          aria-label={`${t.subsTitle}: ${formatNumber(lang, subscriberHistory[0].subscribers)} → ${formatNumber(lang, maxValue)}`}
+          aria-label={`${t.subsTitle}: ${formatNumber(lang, history[0].subscribers)} → ${formatNumber(lang, lastValue)}`}
           tabIndex={0}
           onKeyDown={onKeyDown}
           onPointerMove={handleMove}
@@ -108,10 +121,10 @@ export function SubscribersChart({ lang, t }: { lang: Locale; t: Dictionary["cha
               key={i}
               x={points[i][0]}
               y={HEIGHT - 8}
-              textAnchor={i === 0 ? "start" : i === subscriberHistory.length - 1 ? "end" : "middle"}
+              textAnchor={i === 0 ? "start" : i === history.length - 1 ? "end" : "middle"}
               className="fill-[var(--text-subtle)] text-[11px]"
             >
-              {formatMonth(lang, subscriberHistory[i].date.slice(0, 7))}
+              {formatMonth(lang, history[i].date.slice(0, 7))}
             </text>
           ))}
 
@@ -121,7 +134,7 @@ export function SubscribersChart({ lang, t }: { lang: Locale; t: Dictionary["cha
           {/* Punto final con etiqueta directa */}
           <circle cx={last[0]} cy={last[1]} r={5} fill="var(--chart-accent)" stroke="var(--chart-surface)" strokeWidth={2} />
           <text x={last[0] - 10} y={last[1] - 14} textAnchor="end" className="fill-[var(--text-heading)] text-sm font-bold">
-            {formatNumber(lang, maxValue)}
+            {formatNumber(lang, lastValue)}
           </text>
 
           {activePoint && (
@@ -144,11 +157,11 @@ export function SubscribersChart({ lang, t }: { lang: Locale; t: Dictionary["cha
             x={activePoint[0]}
             y={activePoint[1]}
             width={width}
-            title={formatDate(lang, subscriberHistory[active].date)}
+            title={formatDate(lang, history[active].date)}
             rows={[
               {
                 label: t.subscribers.toLowerCase(),
-                value: formatNumber(lang, subscriberHistory[active].subscribers),
+                value: formatNumber(lang, history[active].subscribers),
                 color: "var(--chart-accent)",
               },
             ]}

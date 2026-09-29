@@ -8,7 +8,15 @@ import { ageGroups, devices, outsideVenezuelaShare } from "@/data/channel";
 import { formats } from "@/data/formats";
 import { siteConfig } from "@/data/site";
 
-export function CampaignSection({ lang, dict }: { lang: Locale; dict: Dictionary }) {
+export function CampaignSection({
+  lang,
+  dict,
+  perVideoViews,
+}: {
+  lang: Locale;
+  dict: Dictionary;
+  perVideoViews: { median: number; mean: number };
+}) {
   const t = dict.builder;
   const adults = ageGroups.filter((g) => g.id !== "13-17" && g.id !== "18-24").reduce((a, g) => a + g.share, 0);
   const formatNames = Object.fromEntries(
@@ -32,6 +40,7 @@ export function CampaignSection({ lang, dict }: { lang: Locale; dict: Dictionary
               abroad: Math.round(outsideVenezuelaShare),
               adults: Math.round(adults),
             }}
+            perVideoViews={perVideoViews}
             contact={{
               email: siteConfig.contact.email,
               whatsapp: siteConfig.contact.whatsapp.phoneDigitsOnly,

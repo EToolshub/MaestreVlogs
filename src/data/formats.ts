@@ -1,5 +1,3 @@
-import { perVideoViews } from "./channel";
-
 /**
  * Formatos de colaboración. Los textos (nombre, descripción, qué incluye)
  * están en los diccionarios de idioma; aquí solo viven los datos que usa
@@ -10,24 +8,33 @@ export type FormatId = "integration" | "dedicated" | "series" | "short" | "commu
 
 export type Format = {
   id: FormatId;
-  /** Vistas estimadas por unidad [mínimo, máximo]. null = alcance adicional sin estimar. */
-  views: [number, number] | null;
+  /**
+   * Cuántos "videos largos" de vistas equivale una unidad. Las vistas
+   * estimadas = mediana y promedio de vistas por video × este número
+   * (se recalculan solas con cada actualización de YouTube).
+   * null = alcance adicional sin estimar.
+   */
+  videoMultiplier: number | null;
   /** Videos largos de YouTube que suma (para el calendario estimado). */
   longVideos: number;
   maxQty: number;
   featured?: boolean;
 };
 
-const perVideo: [number, number] = [perVideoViews.median, perVideoViews.mean];
-
 export const formats: Format[] = [
-  { id: "integration", views: perVideo, longVideos: 1, maxQty: 6, featured: true },
-  { id: "dedicated", views: perVideo, longVideos: 1, maxQty: 4 },
-  { id: "series", views: [perVideo[0] * 3, perVideo[1] * 3], longVideos: 3, maxQty: 2 },
-  { id: "short", views: null, longVideos: 0, maxQty: 10 },
-  { id: "community", views: null, longVideos: 0, maxQty: 6 },
-  { id: "crosspost", views: null, longVideos: 0, maxQty: 6 },
+  { id: "integration", videoMultiplier: 1, longVideos: 1, maxQty: 6, featured: true },
+  { id: "dedicated", videoMultiplier: 1, longVideos: 1, maxQty: 4 },
+  { id: "series", videoMultiplier: 3, longVideos: 3, maxQty: 2 },
+  { id: "short", videoMultiplier: null, longVideos: 0, maxQty: 10 },
+  { id: "community", videoMultiplier: null, longVideos: 0, maxQty: 6 },
+  { id: "crosspost", videoMultiplier: null, longVideos: 0, maxQty: 6 },
 ];
+
+/** Rango de vistas estimadas de un formato, o null si no se estima. */
+export function estimateViews(format: Format, perVideo: { median: number; mean: number }): [number, number] | null {
+  if (format.videoMultiplier === null) return null;
+  return [perVideo.median * format.videoMultiplier, perVideo.mean * format.videoMultiplier];
+}
 
 export type PackageId = "test" | "launch" | "journey";
 

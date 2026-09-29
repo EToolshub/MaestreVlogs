@@ -14,15 +14,13 @@ const anton = Anton({ variable: "--font-anton", subsets: ["latin"], weight: "400
 const manrope = Manrope({ variable: "--font-manrope", subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] });
 const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"], weight: ["400", "500", "600"] });
 
-export const dynamicParams = false;
-
 export function generateStaticParams() {
   return locales.map((lang) => ({ lang }));
 }
 
 export async function generateMetadata({ params }: LayoutProps<"/[lang]">): Promise<Metadata> {
   const { lang } = await params;
-  if (!hasLocale(lang)) return {};
+  if (!hasLocale(lang)) return { metadataBase: new URL(siteConfig.url) };
   const { meta } = await getDictionary(lang);
 
   return {

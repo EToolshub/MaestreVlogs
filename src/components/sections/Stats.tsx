@@ -9,8 +9,9 @@ import { SpotlightCard } from "@/components/ui/SpotlightCard";
 import { MonthlyViewsChart, SubscribersChart } from "@/components/charts/GrowthCharts";
 import { channelStats, derived } from "@/data/channel";
 import { fill, formatDuration, formatNumber } from "@/lib/utils";
+import type { YoutubeData } from "@/lib/youtube";
 
-export function Stats({ lang, dict }: { lang: Locale; dict: Dictionary }) {
+export function Stats({ lang, dict, yt }: { lang: Locale; dict: Dictionary; yt: YoutubeData }) {
   const t = dict.stats;
 
   const tiles = [
@@ -80,7 +81,11 @@ export function Stats({ lang, dict }: { lang: Locale; dict: Dictionary }) {
 
         <div className="mt-6 grid gap-4 lg:grid-cols-2">
           <FadeIn>
-            <SubscribersChart lang={lang} t={dict.charts} />
+            <SubscribersChart
+              lang={lang}
+              t={dict.charts}
+              live={yt.subscribersLive ? { date: yt.fetchedAt.slice(0, 10), subscribers: yt.subscribers } : null}
+            />
           </FadeIn>
           <FadeIn delay={0.08}>
             <MonthlyViewsChart lang={lang} t={dict.charts} />

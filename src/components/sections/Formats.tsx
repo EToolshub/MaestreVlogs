@@ -5,11 +5,19 @@ import { Container } from "@/components/ui/Container";
 import { FadeIn } from "@/components/ui/FadeIn";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { SpotlightCard } from "@/components/ui/SpotlightCard";
-import { formats } from "@/data/formats";
+import { estimateViews, formats } from "@/data/formats";
 import { formatIcons } from "@/lib/format-icons";
 import { cn, formatNumber } from "@/lib/utils";
 
-export function Formats({ lang, dict }: { lang: Locale; dict: Dictionary }) {
+export function Formats({
+  lang,
+  dict,
+  perVideoViews,
+}: {
+  lang: Locale;
+  dict: Dictionary;
+  perVideoViews: { median: number; mean: number };
+}) {
   const t = dict.formats;
 
   return (
@@ -23,6 +31,7 @@ export function Formats({ lang, dict }: { lang: Locale; dict: Dictionary }) {
           {formats.map((format, i) => {
             const copy = t.items[format.id];
             const Icon = formatIcons[format.id];
+            const views = estimateViews(format, perVideoViews);
             return (
               <li key={format.id}>
                 <FadeIn delay={(i % 3) * 0.06} className="h-full">
@@ -50,10 +59,10 @@ export function Formats({ lang, dict }: { lang: Locale; dict: Dictionary }) {
                       ))}
                     </ul>
                     <p className="mt-6 flex items-baseline justify-between gap-3 border-t border-white/[0.06] pt-4 text-sm">
-                      <span className="text-muted">{format.views ? t.estViews : t.extraReach}</span>
-                      {format.views ? (
+                      <span className="text-muted">{views ? t.estViews : t.extraReach}</span>
+                      {views ? (
                         <span className="font-bold text-heading">
-                          {formatNumber(lang, format.views[0])}–{formatNumber(lang, format.views[1])}
+                          {formatNumber(lang, views[0])}–{formatNumber(lang, views[1])}
                           <span className="ml-1 font-normal text-muted">{t.perUnit}</span>
                         </span>
                       ) : (

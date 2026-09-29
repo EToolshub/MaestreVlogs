@@ -9,19 +9,20 @@ import { Marquee } from "@/components/ui/Marquee";
 import { YoutubeIcon } from "@/components/icons/SocialIcons";
 import { Viewfinder } from "./Viewfinder";
 import { siteConfig } from "@/data/site";
-import { channelStats, derived, devices, thumbnailUrl, videos } from "@/data/channel";
+import { channelStats, derived, devices } from "@/data/channel";
+import type { YoutubeData } from "@/lib/youtube";
+import { videoTitle } from "@/lib/video-view";
 import { formatCompact, formatNumber } from "@/lib/utils";
 
-export function Hero({ lang, dict }: { lang: Locale; dict: Dictionary }) {
+export function Hero({ lang, dict, yt }: { lang: Locale; dict: Dictionary; yt: YoutubeData }) {
   const t = dict.hero;
   const tv = devices.find((d) => d.id === "tv")!;
 
-  const slides = videos.slice(0, 5).map((v) => ({
-    id: v.id,
-    title: lang === "en" ? v.titleEn : v.title,
-    views: formatNumber(lang, v.views),
-    thumb: thumbnailUrl(v.id, "max"),
-  }));
+  // Los 5 videos más vistos, según los datos más recientes de YouTube.
+  const slides = [...yt.videos]
+    .sort((a, b) => b.views - a.views)
+    .slice(0, 5)
+    .map((v) => ({ id: v.id, title: videoTitle(v, lang), views: formatNumber(lang, v.views), thumb: v.thumb }));
 
   return (
     <section className="relative -mt-[4.25rem] overflow-hidden pt-[4.25rem]">
@@ -64,7 +65,7 @@ export function Hero({ lang, dict }: { lang: Locale; dict: Dictionary }) {
           </div>
 
           <dl className="mt-10 grid max-w-xl grid-cols-3 divide-x divide-white/10 rounded-2xl border border-white/10 bg-ink-900/60 backdrop-blur">
-            <TrustStat value={formatNumber(lang, channelStats.subscribers)} label={t.trustSubs} />
+            <TrustStat value={formatNumber(lang, yt.subscribers)} label={t.trustSubs} />
             <TrustStat value={formatCompact(lang, channelStats.views)} label={t.trustViews} />
             <TrustStat value={`${formatNumber(lang, derived.engagementRate, 1)}%`} label={t.trustEngagement} />
           </dl>

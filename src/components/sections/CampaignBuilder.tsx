@@ -4,8 +4,7 @@ import { useMemo, useState } from "react";
 import { Check, Copy, Mail, Minus, Plus, RotateCcw } from "lucide-react";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries/es";
-import { formats, packages, type FormatId, type PackageId } from "@/data/formats";
-import { perVideoViews } from "@/data/channel";
+import { estimateViews, formats, packages, type FormatId, type PackageId } from "@/data/formats";
 import { formatIcons } from "@/lib/format-icons";
 import { buildMailto, buildWhatsAppLink, cn, fill, formatNumber } from "@/lib/utils";
 import { WhatsappIcon } from "@/components/icons/SocialIcons";
@@ -25,12 +24,14 @@ export function CampaignBuilder({
   formatNames,
   audience,
   contact,
+  perVideoViews,
 }: {
   lang: Locale;
   t: Dictionary["builder"];
   formatNames: Record<FormatId, { name: string; short: string }>;
   audience: { tv: number; abroad: number; adults: number };
   contact: { email: string; whatsapp: string; creatorName: string };
+  perVideoViews: { median: number; mean: number };
 }) {
   const [qty, setQty] = useState<Quantities>(() => fromPackage("launch"));
   const [activePackage, setActivePackage] = useState<PackageId | null>("launch");
@@ -47,9 +48,10 @@ export function CampaignBuilder({
       if (!n) continue;
       lines.push(`• ${n}× ${formatNames[format.id].name}`);
       longVideos += n * format.longVideos;
-      if (format.views) {
-        min += n * format.views[0];
-        max += n * format.views[1];
+      const views = estimateViews(format, perVideoViews);
+      if (views) {
+        min += n * views[0];
+        max += n * views[1];
       } else {
         extra = true;
       }
@@ -57,7 +59,7 @@ export function CampaignBuilder({
     const weeksMin = longVideos === 0 ? 1 : 2 + Math.max(0, longVideos - 1);
     const weeksMax = longVideos === 0 ? 2 : weeksMin + 1 + Math.floor(longVideos / 3);
     return { min, max, extra, lines, weeksMin, weeksMax, total: lines.length };
-  }, [qty, formatNames]);
+  }, [qty, formatNames, perVideoViews]);
 
   const range =
     summary.max > 0 ? `${formatNumber(lang, summary.min)} – ${formatNumber(lang, summary.max)}` : "—";

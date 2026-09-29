@@ -5,21 +5,34 @@ import { Container } from "@/components/ui/Container";
 import { FadeIn } from "@/components/ui/FadeIn";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { SpotlightCard } from "@/components/ui/SpotlightCard";
-import { ageGroups, channelStats, derived, devices, outsideVenezuelaShare } from "@/data/channel";
+import { yearGrowth, type AnalyticsData } from "@/lib/analytics";
+import type { YoutubeData } from "@/lib/youtube";
 import { fill, formatDuration, formatNumber } from "@/lib/utils";
 
 const icons = [Handshake, Globe2, UserCheck, Tv, Clock, Rocket];
 
-export function WhyBrands({ lang, dict }: { lang: Locale; dict: Dictionary }) {
+export function WhyBrands({
+  lang,
+  dict,
+  analytics,
+  yt,
+}: {
+  lang: Locale;
+  dict: Dictionary;
+  analytics: AnalyticsData;
+  yt: YoutubeData;
+}) {
   const t = dict.why;
-  const adults = ageGroups.filter((g) => g.id !== "13-17" && g.id !== "18-24").reduce((a, g) => a + g.share, 0);
+  const { audience, year } = analytics;
+  const adults = audience.ageGroups.filter((g) => g.id !== "13-17" && g.id !== "18-24").reduce((a, g) => a + g.share, 0);
+  const growth = yearGrowth(yt.subscribers, year.netSubscribers);
   const vars = {
-    comments: formatNumber(lang, channelStats.comments),
-    abroad: formatNumber(lang, outsideVenezuelaShare, 1),
+    comments: formatNumber(lang, year.comments),
+    abroad: formatNumber(lang, audience.outsideVenezuelaShare, 1),
     adults: formatNumber(lang, Math.round(adults)),
-    tv: formatNumber(lang, Math.round(devices.find((d) => d.id === "tv")!.views)),
-    duration: formatDuration(channelStats.avgViewDurationSeconds),
-    growth: formatNumber(lang, derived.growthMultiple, 0),
+    tv: formatNumber(lang, Math.round(audience.devices.find((d) => d.id === "tv")?.views ?? 0)),
+    duration: formatDuration(year.avgViewDurationSeconds),
+    growth: growth ? formatNumber(lang, growth.multiple, growth.digits) : "",
   };
 
   return (

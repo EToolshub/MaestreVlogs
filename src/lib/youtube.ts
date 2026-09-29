@@ -4,20 +4,26 @@ import { siteConfig } from "@/data/site";
 import { classifyPillar } from "./pillars";
 
 /**
- * Datos en vivo del canal.
+ * Datos públicos del canal (YouTube Data API v3).
  *
- * La página se regenera como máximo cada 6 horas (ver `revalidate` en
- * app/[lang]/page.tsx). En cada regeneración se consulta, en este orden:
- *   1. YouTube Data API v3 (si existe la variable YOUTUBE_API_KEY): suscriptores,
- *      vistas totales y los últimos 50 videos con sus estadísticas.
- *   2. El RSS público del canal (sin clave): los últimos 15 videos con vistas.
- *   3. Los datos guardados en src/data/channel.ts.
+ * - Suscriptores, vistas y número de videos: se consultan como máximo cada
+ *   minuto (ruta /api/youtube/live, que el navegador vuelve a pedir cada 60 s).
+ * - Lista de videos y estadísticas por video: cada 5 minutos.
+ * - Los 25 más vistos de siempre: cada 6 horas (esa consulta cuesta 100 unidades).
+ *
+ * Orden de respaldo: API (YOUTUBE_API_KEY) → RSS público del canal → datos
+ * guardados en src/data/channel.ts.
  */
-export const YOUTUBE_REVALIDATE_SECONDS = 21600;
 export const YOUTUBE_CACHE_TAG = "youtube";
+const COUNTERS_REVALIDATE = 60;
+const VIDEOS_REVALIDATE = 300;
+const POPULAR_REVALIDATE = 21600;
 
 /** Videos de 3 minutos o menos se consideran Shorts. */
 const SHORT_MAX_SECONDS = 180;
+
+// Acepta también "YOTUBE_API_KEY" (así quedó escrita en Vercel la primera vez).
+const apiKey = () => process.env.YOUTUBE_API_KEY || process.env.YOTUBE_API_KEY || "";
 
 export type LiveVideo = {
   id: string;
@@ -46,15 +52,22 @@ export type YoutubeData = {
   perVideoViews: { median: number; mean: number };
 };
 
+/** Lo que el navegador vuelve a pedir cada minuto. */
+export type LiveSnapshot = {
+  source: YoutubeData["source"];
+  fetchedAt: string;
+  subscribers: number;
+  subscribersLive: boolean;
+  totalViews: number;
+  videoCount: number;
+  latest: LiveVideo | null;
+};
+
 const known = new Map(staticVideos.map((v) => [v.id, v]));
 
 function withKnownData(v: Omit<LiveVideo, "pillar" | "titleEn">): LiveVideo {
   const saved = known.get(v.id);
-  return {
-    ...v,
-    titleEn: saved?.titleEn ?? null,
-    pillar: saved?.pillar ?? classifyPillar(v.title),
-  };
+  return { ...v, titleEn: saved?.titleEn ?? null, pillar: saved?.pillar ?? classifyPillar(v.title) };
 }
 
 /** "PT12M14S" → 734 */
@@ -92,7 +105,9 @@ export function computePerVideoViews(videos: LiveVideo[], now: Date) {
   return { median, mean };
 }
 
-/* ───────────── 1. YouTube Data API v3 ───────────── */
+/* ───────────── YouTube Data API v3 ───────────── */
+
+const API = "https://www.googleapis.com/youtube/v3";
 
 type ApiChannel = {
   items?: {
@@ -140,25 +155,49 @@ export function videosFromApi(json: ApiVideos): LiveVideo[] {
     .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
 }
 
-async function getJson<T>(url: string): Promise<T> {
+async function getJson<T>(url: string, revalidate: number): Promise<T> {
   const res = await fetch(url, {
-    next: { revalidate: YOUTUBE_REVALIDATE_SECONDS, tags: [YOUTUBE_CACHE_TAG] },
+    next: { revalidate, tags: [YOUTUBE_CACHE_TAG] },
     signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) throw new Error(`YouTube ${res.status}: ${url.split("?")[0]}`);
   return res.json() as Promise<T>;
 }
 
-async function fromApi(key: string): Promise<YoutubeData> {
-  const base = "https://www.googleapis.com/youtube/v3";
+async function channelCounters(key: string, revalidate: number) {
   const channel = await getJson<ApiChannel>(
-    `${base}/channels?part=statistics,contentDetails&id=${siteConfig.channelId}&key=${key}`
+    `${API}/channels?part=statistics,contentDetails&id=${siteConfig.channelId}&key=${key}`,
+    revalidate
   );
   const info = channel.items?.[0];
   if (!info) throw new Error("Canal no encontrado");
+  const hidden = info.statistics.hiddenSubscriberCount || !info.statistics.subscriberCount;
+  return {
+    uploads: info.contentDetails.relatedPlaylists.uploads,
+    subscribers: hidden ? channelStats.subscribers : Number(info.statistics.subscriberCount),
+    subscribersLive: !hidden,
+    totalViews: Number(info.statistics.viewCount),
+    videoCount: Number(info.statistics.videoCount),
+  };
+}
 
+async function videoDetails(ids: string[], key: string, revalidate: number) {
+  const items: NonNullable<ApiVideos["items"]> = [];
+  for (let i = 0; i < ids.length; i += 50) {
+    const chunk = await getJson<ApiVideos>(
+      `${API}/videos?part=snippet,statistics,contentDetails&id=${ids.slice(i, i + 50).join(",")}&key=${key}`,
+      revalidate
+    );
+    items.push(...(chunk.items ?? []));
+  }
+  return videosFromApi({ items });
+}
+
+async function fromApi(key: string): Promise<YoutubeData> {
+  const counters = await channelCounters(key, VIDEOS_REVALIDATE);
   const uploads = await getJson<ApiPlaylist>(
-    `${base}/playlistItems?part=contentDetails&maxResults=50&playlistId=${info.contentDetails.relatedPlaylists.uploads}&key=${key}`
+    `${API}/playlistItems?part=contentDetails&maxResults=50&playlistId=${counters.uploads}&key=${key}`,
+    VIDEOS_REVALIDATE
   );
   const recentIds = (uploads.items ?? []).map((i) => i.contentDetails.videoId);
 
@@ -167,43 +206,34 @@ async function fromApi(key: string): Promise<YoutubeData> {
   let popularIds: string[] = [];
   try {
     const popular = await getJson<ApiSearch>(
-      `${base}/search?part=id&type=video&order=viewCount&maxResults=25&channelId=${siteConfig.channelId}&key=${key}`
+      `${API}/search?part=id&type=video&order=viewCount&maxResults=25&channelId=${siteConfig.channelId}&key=${key}`,
+      POPULAR_REVALIDATE
     );
     popularIds = (popular.items ?? []).map((i) => i.id.videoId).filter(Boolean);
   } catch (error) {
     console.error("[youtube] búsqueda de populares no disponible:", (error as Error).message);
   }
 
-  const ids = [...new Set([...recentIds, ...popularIds])];
-  const items: NonNullable<ApiVideos["items"]> = [];
-  for (let i = 0; i < ids.length; i += 50) {
-    const chunk = await getJson<ApiVideos>(
-      `${base}/videos?part=snippet,statistics,contentDetails&id=${ids.slice(i, i + 50).join(",")}&key=${key}`
-    );
-    items.push(...(chunk.items ?? []));
-  }
-
   const now = new Date();
   const recent = new Set(recentIds);
-  const apiVideos = videosFromApi({ items });
+  const apiVideos = await videoDetails([...new Set([...recentIds, ...popularIds])], key, VIDEOS_REVALIDATE);
   const liveIds = new Set(apiVideos.map((v) => v.id));
   const videos = [...apiVideos, ...fromStaticVideos().filter((v) => !liveIds.has(v.id))].sort(
     (a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt)
   );
-  const hidden = info.statistics.hiddenSubscriberCount || !info.statistics.subscriberCount;
   return {
     source: "api",
     fetchedAt: now.toISOString(),
-    subscribers: hidden ? channelStats.subscribers : Number(info.statistics.subscriberCount),
-    subscribersLive: !hidden,
-    totalViews: Number(info.statistics.viewCount),
-    videoCount: Number(info.statistics.videoCount),
+    subscribers: counters.subscribers,
+    subscribersLive: counters.subscribersLive,
+    totalViews: counters.totalViews,
+    videoCount: counters.videoCount,
     videos,
     perVideoViews: computePerVideoViews(apiVideos.filter((v) => recent.has(v.id)), now),
   };
 }
 
-/* ───────────── 2. RSS público ───────────── */
+/* ───────────── RSS público ───────────── */
 
 export function videosFromRss(xml: string): LiveVideo[] {
   const entries = xml.split("<entry>").slice(1);
@@ -228,18 +258,22 @@ export function videosFromRss(xml: string): LiveVideo[] {
     .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
 }
 
-async function fromRss(): Promise<YoutubeData> {
+async function rssVideos() {
   const res = await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${siteConfig.channelId}`, {
-    next: { revalidate: YOUTUBE_REVALIDATE_SECONDS, tags: [YOUTUBE_CACHE_TAG] },
+    next: { revalidate: VIDEOS_REVALIDATE, tags: [YOUTUBE_CACHE_TAG] },
     signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) throw new Error(`RSS ${res.status}`);
-  const rssVideos = videosFromRss(await res.text());
-  if (!rssVideos.length) throw new Error("RSS sin videos");
+  const list = videosFromRss(await res.text());
+  if (!list.length) throw new Error("RSS sin videos");
+  return list;
+}
 
+async function fromRss(): Promise<YoutubeData> {
+  const latest = await rssVideos();
   // El RSS solo trae los 15 más recientes: se completa con los guardados.
-  const ids = new Set(rssVideos.map((v) => v.id));
-  const videos = [...rssVideos, ...fromStaticVideos().filter((v) => !ids.has(v.id))].sort(
+  const ids = new Set(latest.map((v) => v.id));
+  const videos = [...latest, ...fromStaticVideos().filter((v) => !ids.has(v.id))].sort(
     (a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt)
   );
   const now = new Date();
@@ -251,11 +285,11 @@ async function fromRss(): Promise<YoutubeData> {
     totalViews: channelStats.totalChannelViews,
     videoCount: channelStats.videos,
     videos,
-    perVideoViews: computePerVideoViews(rssVideos, now),
+    perVideoViews: computePerVideoViews(latest, now),
   };
 }
 
-/* ───────────── 3. Datos guardados ───────────── */
+/* ───────────── Datos guardados ───────────── */
 
 function fromStaticVideos(): LiveVideo[] {
   return staticVideos
@@ -287,9 +321,9 @@ function fromStatic(): YoutubeData {
   };
 }
 
-/** Una sola consulta por render, compartida por todas las secciones. */
+/** Todo lo público del canal. Una sola consulta por render. */
 export const getYoutubeData = cache(async (): Promise<YoutubeData> => {
-  const key = process.env.YOUTUBE_API_KEY;
+  const key = apiKey();
   if (key) {
     try {
       return await fromApi(key);
@@ -305,10 +339,40 @@ export const getYoutubeData = cache(async (): Promise<YoutubeData> => {
   return fromStatic();
 });
 
-export const formatSeconds = (total: number) => {
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  const mmss = `${h ? String(m).padStart(2, "0") : m}:${String(s).padStart(2, "0")}`;
-  return h ? `${h}:${mmss}` : mmss;
-};
+/** Contadores + último video, para la actualización en vivo (cada minuto). */
+export async function getLiveSnapshot(): Promise<LiveSnapshot> {
+  const key = apiKey();
+  if (key) {
+    try {
+      // Contadores cada minuto; el último video cada 5 minutos (cuida la cuota diaria).
+      const counters = await channelCounters(key, COUNTERS_REVALIDATE);
+      const uploads = await getJson<ApiPlaylist>(
+        `${API}/playlistItems?part=contentDetails&maxResults=5&playlistId=${counters.uploads}&key=${key}`,
+        VIDEOS_REVALIDATE
+      );
+      const ids = (uploads.items ?? []).map((i) => i.contentDetails.videoId);
+      const latest = ids.length ? (await videoDetails(ids, key, VIDEOS_REVALIDATE))[0] ?? null : null;
+      return {
+        source: "api",
+        fetchedAt: new Date().toISOString(),
+        subscribers: counters.subscribers,
+        subscribersLive: counters.subscribersLive,
+        totalViews: counters.totalViews,
+        videoCount: counters.videoCount,
+        latest,
+      };
+    } catch (error) {
+      console.error("[youtube] contadores no disponibles:", (error as Error).message);
+    }
+  }
+  const data = await getYoutubeData();
+  return {
+    source: data.source,
+    fetchedAt: data.fetchedAt,
+    subscribers: data.subscribers,
+    subscribersLive: data.subscribersLive,
+    totalViews: data.totalViews,
+    videoCount: data.videoCount,
+    latest: data.videos[0] ?? null,
+  };
+}

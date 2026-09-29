@@ -1,95 +1,140 @@
-import { Clock, Eye, Heart, Sparkles, TrendingUp, Users } from "lucide-react";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries/es";
 import { Container } from "@/components/ui/Container";
-import { CountUp } from "@/components/ui/CountUp";
 import { FadeIn } from "@/components/ui/FadeIn";
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { SpotlightCard } from "@/components/ui/SpotlightCard";
-import { MonthlyViewsChart, SubscribersChart } from "@/components/charts/GrowthCharts";
-import { channelStats, derived } from "@/data/channel";
-import { fill, formatDuration, formatNumber } from "@/lib/utils";
+import { StatsView, type Period, type Tile } from "./StatsView";
+import { changePct, yearGrowth, type AnalyticsData, type Totals } from "@/lib/analytics";
 import type { YoutubeData } from "@/lib/youtube";
+import { fill, formatDate, formatDuration, formatNumber } from "@/lib/utils";
 
-export function Stats({ lang, dict, yt }: { lang: Locale; dict: Dictionary; yt: YoutubeData }) {
+/** Total de suscriptores al cierre de cada mes, reconstruido desde la cifra actual. */
+function cumulativeByMonth(monthly: AnalyticsData["monthly"], current: number, dataThrough: string) {
+  const points: { date: string; value: number }[] = [];
+  let total = current;
+  for (let i = monthly.length - 1; i >= 0; i--) {
+    const [y, m] = monthly[i].month.split("-").map(Number);
+    const monthEnd = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+    points.unshift({ date: i === monthly.length - 1 && dataThrough < monthEnd ? dataThrough : monthEnd, value: Math.max(0, total) });
+    total -= monthly[i].net;
+  }
+  if (monthly.length) {
+    // Punto de partida: último día del mes anterior al primero mostrado.
+    const [y, m] = monthly[0].month.split("-").map(Number);
+    points.unshift({ date: new Date(Date.UTC(y, m - 1, 0)).toISOString().slice(0, 10), value: Math.max(0, total) });
+  }
+  return points;
+}
+
+export function Stats({ lang, dict, analytics, yt }: { lang: Locale; dict: Dictionary; analytics: AnalyticsData; yt: YoutubeData }) {
   const t = dict.stats;
+  const c = dict.charts;
+  const up = (current: number, previous: number) => {
+    const pct = changePct(current, previous);
+    return pct !== null && pct > 0 ? fill(t.deltaUp, { pct: formatNumber(lang, pct) }) : undefined;
+  };
 
-  const tiles = [
+  const commonTiles = (x: Totals, viewsHint: string): Tile[] => [
+    { icon: "eye", label: t.tiles.views.label, hint: viewsHint, value: x.views },
+    { icon: "clock", label: t.tiles.watchHours.label, hint: t.tiles.watchHours.hint, value: x.watchHours },
+    { icon: "sparkles", label: t.tiles.avgDuration.label, hint: t.tiles.avgDuration.hint, text: formatDuration(x.avgViewDurationSeconds) },
+    { icon: "heart", label: t.tiles.engagement.label, hint: t.tiles.engagement.hint, value: x.engagementRate, decimals: 1, suffix: "%" },
+  ];
+
+  const { last28, prev28, year } = analytics;
+  const tiles28 = commonTiles(last28, t.tiles.views.hint28);
+  tiles28[0].delta = up(last28.views, prev28.views);
+  tiles28[1].delta = up(last28.watchHours, prev28.watchHours);
+  tiles28.push(
     {
-      Icon: Eye,
-      value: <CountUp to={channelStats.views} locale={lang} />,
-      ...t.tiles.views,
+      icon: "userPlus",
+      label: t.tiles.netSubs.label,
+      hint: fill(t.tiles.netSubs.hint, { gained: formatNumber(lang, last28.subscribersGained), lost: formatNumber(lang, last28.subscribersLost) }),
+      value: last28.netSubscribers,
+      prefix: last28.netSubscribers > 0 ? "+" : "",
+      delta: up(last28.netSubscribers, prev28.netSubscribers),
+    },
+    { icon: "users", label: t.tiles.nonSubs.label, hint: t.tiles.nonSubs.hint, value: analytics.nonSubscriberShare.d28, decimals: 1, suffix: "%" }
+  );
+
+  const growth = yearGrowth(yt.subscribers, year.netSubscribers);
+  const tiles12 = commonTiles(year, t.tiles.views.hint12);
+  tiles12.push(
+    growth
+      ? {
+          icon: "trend",
+          label: t.tiles.growth.label,
+          hint: fill(t.tiles.growth.hint, { from: formatNumber(lang, growth.yearAgo), to: formatNumber(lang, yt.subscribers) }),
+          value: Math.round(growth.multiple * 10) / 10,
+          decimals: growth.digits,
+          prefix: "×",
+        }
+      : {
+          icon: "userPlus",
+          label: t.tiles.netSubs.label,
+          hint: fill(t.tiles.netSubs.hint, { gained: formatNumber(lang, year.subscribersGained), lost: formatNumber(lang, year.subscribersLost) }),
+          value: year.netSubscribers,
+          prefix: year.netSubscribers > 0 ? "+" : "",
+        },
+    { icon: "users", label: t.tiles.nonSubs.label, hint: t.tiles.nonSubs.hint, value: analytics.nonSubscriberShare.m12, decimals: 1, suffix: "%" }
+  );
+
+  const periods: Period[] = [
+    {
+      id: "28d",
+      label: t.period28,
+      tiles: tiles28,
+      subs: {
+        type: "columns",
+        title: c.subsDailyTitle,
+        subtitle: c.subsDailySubtitle,
+        data: analytics.daily28.map((d) => ({
+          key: d.date,
+          value: d.net,
+          extra: [
+            { label: c.gained, value: d.gained },
+            { label: c.lost, value: d.lost },
+          ],
+        })),
+      },
+      views: {
+        title: c.viewsDailyTitle,
+        subtitle: c.viewsDailySubtitle,
+        kind: "day",
+        data: analytics.daily28.map((d) => ({ key: d.date, value: d.views })),
+      },
     },
     {
-      Icon: Clock,
-      value: <CountUp to={derived.watchHours} locale={lang} />,
-      ...t.tiles.watchHours,
-    },
-    {
-      Icon: Sparkles,
-      // m:ss no se anima para que no parpadee un formato raro.
-      value: <span>{formatDuration(channelStats.avgViewDurationSeconds)}</span>,
-      label: t.tiles.avgDuration.label,
-      hint: t.tiles.avgDuration.hint,
-    },
-    {
-      Icon: Heart,
-      value: <CountUp to={derived.engagementRate} decimals={1} suffix="%" locale={lang} />,
-      ...t.tiles.engagement,
-    },
-    {
-      Icon: TrendingUp,
-      value: <CountUp to={derived.growthMultiple} decimals={0} prefix="×" locale={lang} />,
-      label: t.tiles.growth.label,
-      hint: fill(t.tiles.growth.hint, {
-        from: formatNumber(lang, channelStats.subscribersOneYearAgo),
-        to: formatNumber(lang, channelStats.subscribers),
-      }),
-    },
-    {
-      Icon: Users,
-      value: <CountUp to={channelStats.nonSubscriberViewShare} decimals={1} suffix="%" locale={lang} />,
-      ...t.tiles.nonSubs,
+      id: "12m",
+      label: t.period12,
+      tiles: tiles12,
+      subs: {
+        type: "line",
+        title: c.subsTitle,
+        subtitle: c.subsSubtitle,
+        points: cumulativeByMonth(analytics.monthly, yt.subscribers, analytics.dataThrough),
+      },
+      views: {
+        title: c.viewsTitle,
+        subtitle: c.viewsSubtitle,
+        kind: "month",
+        data: analytics.monthly.map((m) => ({ key: m.month, value: m.views, extra: [{ label: c.hours, value: m.hours }] })),
+      },
     },
   ];
+
+  const source = fill(analytics.source === "analytics" ? t.sourceLive : t.sourceSaved, {
+    date: formatDate(lang, analytics.dataThrough),
+  });
 
   return (
     <section id="numeros" className="relative border-t border-white/[0.06] bg-alt py-24 sm:py-32">
       <Container>
         <FadeIn>
-          <SectionHeading index="02" eyebrow={t.eyebrow} title={t.title} highlight={t.highlight} description={t.description} />
+          <SectionHeading index="02" eyebrow={t.eyebrow} title={t.title} highlight={t.highlight} />
         </FadeIn>
-
-        <div className="mt-14 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-          {tiles.map(({ Icon, value, label, hint }, i) => (
-            <FadeIn key={label} delay={i * 0.05}>
-              <SpotlightCard className="h-full p-5 sm:p-7">
-                <Icon className="h-5 w-5 text-brand-400" aria-hidden />
-                <dl className="mt-5 flex flex-col-reverse gap-2">
-                  <dt>
-                    <span className="block text-sm font-bold text-body-strong sm:text-base">{label}</span>
-                    <span className="mt-1 block text-xs leading-snug text-muted sm:text-sm">{hint}</span>
-                  </dt>
-                  <dd className="text-[2.1rem] font-extrabold leading-none tracking-tight text-heading sm:text-5xl">
-                    {value}
-                  </dd>
-                </dl>
-              </SpotlightCard>
-            </FadeIn>
-          ))}
-        </div>
-
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
-          <FadeIn>
-            <SubscribersChart
-              lang={lang}
-              t={dict.charts}
-              live={yt.subscribersLive ? { date: yt.fetchedAt.slice(0, 10), subscribers: yt.subscribers } : null}
-            />
-          </FadeIn>
-          <FadeIn delay={0.08}>
-            <MonthlyViewsChart lang={lang} t={dict.charts} />
-          </FadeIn>
+        <div className="mt-12">
+          <StatsView lang={lang} periods={periods} periodLabel={t.periodLabel} source={source} charts={c} />
         </div>
       </Container>
     </section>

@@ -56,3 +56,12 @@ export function buildWhatsAppLink(phoneDigitsOnly: string, message: string) {
 export function buildMailto(email: string, subject: string, body: string) {
   return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
+
+/** 734 → "12:14", 3725 → "1:02:05" */
+export function formatSeconds(total: number) {
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const mmss = `${h ? String(m).padStart(2, "0") : m}:${String(s).padStart(2, "0")}`;
+  return h ? `${h}:${mmss}` : mmss;
+}

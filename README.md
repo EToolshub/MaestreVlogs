@@ -16,9 +16,9 @@ misma base técnica que Pixolve Agency.
 | # | Sección | Para qué sirve |
 | --- | --- | --- |
 | — | Portada | Visor de cámara (REC, código de tiempo) que pasa por tus videos más vistos, titular rotativo y cifras clave |
-| — | En vivo desde YouTube | Suscriptores actuales, próxima meta y último video (se actualiza solo) |
+| — | En vivo desde YouTube | Suscriptores, vistas y videos que se actualizan cada minuto, metas automáticas (5.000 → 7.500 → 10.000…) y último video |
 | 01 | Quién está detrás | Credencial de creador, historia y cita |
-| 02 | El canal en números | 6 indicadores animados + gráficos interactivos de suscriptores y vistas por mes (con vista en tabla) |
+| 02 | El canal en números | Pestañas **Últimos 28 días** (principal) y **Últimos 12 meses**: indicadores animados y gráficos interactivos de suscriptores y vistas (con vista en tabla) |
 | 03 | Audiencia | Edad, países (Venezuela frente a la diáspora), dispositivos (Smart TV), género y temas |
 | 04 | Por qué funciona | 6 argumentos de venta, cada uno respaldado por un dato |
 | 05 | Contenido | 4 pilares + galería "Recientes / Más vistos" que se actualiza sola, filtrable y con reproductor integrado |
@@ -29,6 +29,7 @@ misma base técnica que Pixolve Agency.
 | 10 | Cómo trabajamos | Proceso en 6 pasos + reglas de la casa |
 | 11 | Preguntas frecuentes | Lo que las marcas suelen preguntar |
 | 12 | Contacto | Correo, redes, formulario y botón **Descargar media kit (PDF)** |
+| 13 | Apoya al creador | Donación por PayPal o Binance Pay + mensaje directo a tu WhatsApp |
 
 La estructura sigue lo que recomiendan las guías de media kits de creadores en
 2026 y los "work with me" de youtubers grandes: primero confianza y resultados,
@@ -36,53 +37,90 @@ después audiencia (edad, países, dispositivos), formatos claros, proceso y
 contacto. La cifra de suscriptores no va delante porque las marcas no fijan
 precios con ella: se fijan en vistas por video, interacción y audiencia.
 
-## Datos en vivo desde YouTube (se actualizan solos cada 6 horas)
+## Datos en vivo desde YouTube
 
-La web se conecta a tu canal y se regenera como máximo cada 6 horas. Sin
-tocar nada, cada vez que subes un video:
+Nada se actualiza a mano. Hay tres niveles, todos automáticos:
 
-- La sección **En vivo** muestra tus suscriptores actuales, vistas totales,
-  videos publicados, tu próxima meta y tu **último video** con botón para
-  verlo en la propia web o en YouTube.
-- La **galería de videos** lo añade arriba (pestaña "Recientes", con la
-  etiqueta "Nuevo" durante 7 días) y lo clasifica solo en un tema según el
-  título ([`src/lib/pillars.ts`](src/lib/pillars.ts)).
-- "Más vistos", los videos de la portada, el gráfico de suscriptores y las
-  vistas estimadas del configurador de campañas se recalculan con las cifras
-  nuevas.
+| Qué | Cada cuánto | De dónde sale |
+| --- | --- | --- |
+| Suscriptores, vistas totales, número de videos y último video (sección **En vivo**) | **Cada minuto**, sin recargar la página | YouTube Data API v3 (`YOUTUBE_API_KEY`) |
+| Galería de videos, portada, vistas por video del configurador | Cada 5 minutos | YouTube Data API v3 |
+| Últimos 28 días, últimos 12 meses, edad, países, dispositivos, % de no suscriptores | Cada hora (YouTube publica estos datos con ~2 días de retraso) | YouTube Analytics API (OAuth, ver abajo) |
 
-Cómo funciona ([`src/lib/youtube.ts`](src/lib/youtube.ts)):
+Cuando subes un video:
 
-1. **YouTube Data API v3** (recomendado, necesita `YOUTUBE_API_KEY`):
-   suscriptores exactos, estadísticas de los últimos 50 videos y de los 25
-   más vistos de siempre. Usa ~105 unidades por actualización, muy por debajo
-   del límite gratuito de 10.000 al día.
-2. **RSS público del canal** (sin clave): últimos 15 videos con vistas y me
-   gusta. Los suscriptores se quedan con la cifra guardada.
-3. **Datos guardados** en `src/data/channel.ts`, si YouTube no responde.
+- La sección **En vivo** lo muestra en menos de un minuto como "Último video",
+  con botón para verlo en la propia web o en YouTube.
+- La **galería** lo añade arriba (pestaña "Recientes", con la etiqueta "Nuevo"
+  durante 7 días) y lo clasifica solo en un tema según el título
+  ([`src/lib/pillars.ts`](src/lib/pillars.ts)).
+- "Más vistos", la portada y las vistas estimadas del configurador se
+  recalculan con las cifras nuevas.
 
-La regeneración ocurre con la primera visita después de pasadas las 6 horas;
-esa visita ve la versión anterior y las siguientes ya ven la nueva.
+**Metas automáticas** ([`src/lib/milestones.ts`](src/lib/milestones.ts)): la
+meta sigue la serie 1.000 → 2.500 → 5.000 → 7.500 → 10.000 → 25.000 → 50.000 →
+75.000 → 100.000… Al alcanzar una, la barra pasa sola a la siguiente y la meta
+cumplida aparece como insignia.
 
-### Activar la API de YouTube (5 minutos, gratis)
+Nota: YouTube redondea públicamente los suscriptores a 3 cifras (por ejemplo,
+3.190 se muestra como 3.19K en YouTube, y la API da 3190). La web muestra
+exactamente lo que da YouTube.
 
-1. Entra en [console.cloud.google.com](https://console.cloud.google.com/),
-   crea un proyecto (por ejemplo "MaestreVlogs web").
-2. Menú → **APIs y servicios → Biblioteca** → busca **YouTube Data API v3** →
-   **Habilitar**.
-3. **APIs y servicios → Credenciales → Crear credenciales → Clave de API**.
-   En "Restricciones de API" elige **YouTube Data API v3** y guarda.
-4. En Vercel: tu proyecto → **Settings → Environment Variables** → añade
+Si una fuente falla, la web usa la siguiente ([`src/lib/youtube.ts`](src/lib/youtube.ts),
+[`src/lib/analytics.ts`](src/lib/analytics.ts)):
+
+- Datos públicos: **YouTube Data API v3** → **RSS público del canal** (últimos
+  15 videos) → **datos guardados** en `src/data/channel.ts`.
+- Estadísticas: **YouTube Analytics API** → datos reales guardados
+  (`savedAnalytics` en `src/data/channel.ts`).
+
+Consumo de la API: unas 3.500 unidades al día como máximo, dentro del límite
+gratuito de 10.000.
+
+### Paso 1 · Clave de la YouTube Data API v3 (datos públicos)
+
+1. [console.cloud.google.com](https://console.cloud.google.com/) → crea un
+   proyecto (por ejemplo "MaestreVlogs web").
+2. **APIs y servicios → Biblioteca** → **YouTube Data API v3** → **Habilitar**.
+3. **APIs y servicios → Credenciales → Crear credenciales → Clave de API**. En
+   "Restricciones de API" elige **YouTube Data API v3** y guarda.
+4. Vercel → proyecto → **Settings → Environment Variables** → añade
    `YOUTUBE_API_KEY` con esa clave → **Redeploy**.
 
-Opcional: añade también `REVALIDATE_SECRET` (una palabra secreta cualquiera).
-Así, justo después de subir un video puedes abrir
-`https://TU-DOMINIO/api/revalidate?secret=TU_PALABRA` y la web se actualiza
-en ese momento, sin esperar las 6 horas.
+### Paso 2 · YouTube Analytics (28 días, 12 meses y audiencia)
 
-Las métricas de YouTube Analytics (edad, países, dispositivos, horas de
-visualización) no son públicas: siguen en `src/data/channel.ts` y se
-actualizan a mano (ver abajo).
+Estos datos son privados de tu canal, así que se conectan una sola vez con tu
+cuenta de Google:
+
+1. En el mismo proyecto de Google Cloud: **Biblioteca → YouTube Analytics API
+   → Habilitar**.
+2. **APIs y servicios → Pantalla de consentimiento de OAuth** (o "Google Auth
+   Platform"): tipo **Externo**, nombre de la app "MaestreVlogs web", tu
+   correo como soporte y contacto. Después, en **Público**, pulsa **Publicar
+   app** (estado "En producción"): si se queda en "Prueba", el permiso caduca
+   cada 7 días.
+3. **Credenciales → Crear credenciales → ID de cliente de OAuth** → tipo
+   **Aplicación web** → en "URI de redireccionamiento autorizados" añade
+   `https://maestrevlogs.vercel.app/api/youtube/callback` → **Crear**. Copia el
+   **ID de cliente** y el **Secreto del cliente**.
+4. En Vercel añade `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET` y
+   `ADMIN_SECRET` (una contraseña larga que inventes, solo para ti) →
+   **Redeploy**.
+5. Abre `https://maestrevlogs.vercel.app/api/youtube/connect?secret=TU_ADMIN_SECRET`,
+   elige la cuenta/canal **MaestreVlogs** y acepta. Google avisará de que la
+   app "no está verificada": pulsa **Configuración avanzada → Ir a
+   MaestreVlogs web** (es tu propia app). La página final muestra un
+   **refresh token**.
+6. En Vercel añade `YOUTUBE_REFRESH_TOKEN` con ese valor → **Redeploy**.
+
+Listo: las pestañas "Últimos 28 días" y "Últimos 12 meses" y la sección de
+audiencia pasan a leer YouTube Analytics cada hora.
+
+### Forzar una actualización (opcional)
+
+`https://maestrevlogs.vercel.app/api/revalidate?secret=TU_ADMIN_SECRET`
+vuelve a pedir todo a YouTube en ese momento. (`REVALIDATE_SECRET` sigue
+funcionando como alternativa a `ADMIN_SECRET`.)
 
 ## Antes de publicar: edita esto
 
@@ -91,8 +129,8 @@ hace falta tocar componentes.
 
 | Archivo | Qué contiene |
 | --- | --- |
-| [`src/data/site.ts`](src/data/site.ts) | Nombre, correo, **WhatsApp**, redes, dominio |
-| [`src/data/channel.ts`](src/data/channel.ts) | Métricas de YouTube Analytics, audiencia y videos guardados (respaldo si YouTube no responde; también guarda los títulos en inglés) |
+| [`src/data/site.ts`](src/data/site.ts) | Nombre, correo, **WhatsApp**, redes, dominio, **PayPal y Binance** (`support`) |
+| [`src/data/channel.ts`](src/data/channel.ts) | Datos guardados de respaldo (si YouTube no responde) y títulos en inglés de los videos |
 | [`src/data/formats.ts`](src/data/formats.ts) | Formatos y paquetes del configurador |
 | [`src/i18n/dictionaries/es.ts`](src/i18n/dictionaries/es.ts) | Todos los textos en español |
 | [`src/i18n/dictionaries/en.ts`](src/i18n/dictionaries/en.ts) | Todos los textos en inglés (mismas claves) |
@@ -101,21 +139,19 @@ La web está publicada en **https://maestrevlogs.vercel.app** (también
 responde en maestrevlogs-mediakit.vercel.app). Si
 compras un dominio propio, cámbialo en `url` de `src/data/site.ts`.
 
-## Actualizar las métricas (cada 2–3 meses)
+## Apoya al creador
 
-Las marcas valoran datos recientes. En YouTube Studio → Estadísticas → Modo
-avanzado, elige el mismo periodo y copia a `src/data/channel.ts`:
+La sección 13 permite donar por **PayPal** (enlace paypal.me con el monto ya
+puesto) o **Binance Pay** (UID con botón de copiar). Después, el visitante
+pulsa "Enviar mensaje por WhatsApp" y te llega un mensaje con su nombre, el
+monto, el método y su mensaje. Cambia los datos o los montos sugeridos en
+`support` de [`src/data/site.ts`](src/data/site.ts).
 
-1. Vistas, horas de visualización, duración media, suscriptores ganados/perdidos, me gusta, comentarios y compartidos.
-2. Edad y género, países, tipo de dispositivo.
-3. Vistas por mes y suscriptores a inicio de cada mes.
-4. `statsPeriod.updatedAt` con la fecha del día.
+## Títulos en inglés
 
-Suscriptores, vistas y videos ya se actualizan solos (ver "Datos en vivo").
-Si quieres el título en inglés de un video nuevo, añádelo a `videos` en
-`src/data/channel.ts` con su `titleEn`.
-
-Las cifras derivadas (tasa de interacción, crecimiento, horas) se calculan solas.
+Los videos nuevos aparecen con su título original en la versión inglesa. Si
+quieres traducir uno, añádelo a `videos` en `src/data/channel.ts` con su
+`titleEn`.
 
 ## Marca y diseño
 
@@ -146,7 +182,7 @@ Abre [http://localhost:3000](http://localhost:3000).
 ## Despliegue
 
 Listo para [Vercel](https://vercel.com): importa el repositorio en un proyecto
-nuevo y cada `push` a `main` publica una nueva versión. Añade
-`YOUTUBE_API_KEY` (ver arriba) para los datos en vivo. No necesita base de
+nuevo y cada `push` a `main` publica una nueva versión. Añade las variables
+de `.env.example` (ver "Datos en vivo"). No necesita base de
 datos: el formulario y el configurador abren el correo o WhatsApp del
 visitante con el mensaje ya redactado.

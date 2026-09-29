@@ -1,25 +1,25 @@
 import { ImageResponse } from "next/og";
 import { hasLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
-import { channelStats, devices, outsideVenezuelaShare } from "@/data/channel";
 import { getYoutubeData } from "@/lib/youtube";
+import { getAnalytics } from "@/lib/analytics";
 import { formatCompact, formatNumber } from "@/lib/utils";
 
 export const alt = "MaestreVlogs · Media Kit";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const revalidate = 21600;
+export const revalidate = 3600;
 
 export default async function Image({ params }: { params: Promise<{ lang: string }> }) {
   const { lang: raw } = await params;
   const lang = hasLocale(raw) ? raw : "es";
-  const [dict, yt] = await Promise.all([getDictionary(lang), getYoutubeData()]);
-  const tv = Math.round(devices.find((d) => d.id === "tv")!.views);
+  const [dict, yt, analytics] = await Promise.all([getDictionary(lang), getYoutubeData(), getAnalytics()]);
+  const tv = Math.round(analytics.audience.devices.find((d) => d.id === "tv")?.views ?? 0);
 
   const stats = [
     { v: formatNumber(lang, yt.subscribers), l: dict.hero.trustSubs },
-    { v: formatCompact(lang, channelStats.views), l: dict.hero.trustViews },
-    { v: `${formatNumber(lang, Math.round(outsideVenezuelaShare))}%`, l: dict.audience.countriesHeroLabel },
+    { v: formatCompact(lang, yt.totalViews), l: dict.hero.trustViews },
+    { v: `${formatNumber(lang, Math.round(analytics.audience.outsideVenezuelaShare))}%`, l: dict.audience.countriesHeroLabel },
     { v: `${tv}%`, l: "Smart TV" },
   ];
 

@@ -22,6 +22,12 @@ export function Footer({ lang, dict }: { lang: Locale; dict: Dictionary }) {
           <Logo />
           <p className="mt-3 max-w-xs text-sm text-muted">{t.tagline}</p>
         </div>
+        <a
+          href="#apoyo"
+          className="inline-flex w-fit items-center gap-2 rounded-full border border-brand-400/40 px-4 py-2 text-sm font-bold text-brand-300 transition-colors hover:bg-brand-400/10"
+        >
+          ♥ {dict.live.support}
+        </a>
         <ul className="flex gap-2">
           {socials.map(({ href, label, Icon }) => (
             <li key={href}>

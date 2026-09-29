@@ -4,7 +4,9 @@ import type { Dictionary } from "@/i18n/dictionaries/es";
 import { Container } from "@/components/ui/Container";
 import { FadeIn } from "@/components/ui/FadeIn";
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { ageGroups, coreAgeGroups, countries, devices, gender, outsideVenezuelaShare } from "@/data/channel";
+import { coreAgeGroups } from "@/data/channel";
+import { intlLocale } from "@/i18n/config";
+import type { AnalyticsData } from "@/lib/analytics";
 import { cn, fill, formatNumber } from "@/lib/utils";
 
 /**
@@ -12,22 +14,28 @@ import { cn, fill, formatNumber } from "@/lib/utils";
  * va rotulado). Forma "énfasis": un color destaca lo importante y el gris
  * da contexto.
  */
-export function Audience({ lang, dict }: { lang: Locale; dict: Dictionary }) {
+export function Audience({ lang, dict, analytics }: { lang: Locale; dict: Dictionary; analytics: AnalyticsData }) {
   const t = dict.audience;
   const pct = (v: number) => `${formatNumber(lang, v, 1)}%`;
+  const { ageGroups, countries, devices, gender, outsideVenezuelaShare } = analytics.audience;
+  // Nombres de país en el idioma de la página (cualquier país que aparezca).
+  const regionNames = new Intl.DisplayNames([intlLocale[lang]], { type: "region" });
+  const countryName = (code: string) =>
+    code === "OTHER" ? t.countryNames.OTHER : (t.countryNames as Record<string, string>)[code] ?? regionNames.of(code) ?? code;
+  const description = fill(t.description, { period: analytics.audienceIsLive ? t.periodLive : t.periodSaved });
 
   const adults = ageGroups.filter((g) => g.id !== "13-17" && g.id !== "18-24").reduce((a, g) => a + g.share, 0);
   const core = ageGroups.filter((g) => coreAgeGroups.includes(g.id)).reduce((a, g) => a + g.share, 0);
   const maxAge = Math.max(...ageGroups.map((g) => g.share));
   const maxCountry = Math.max(...countries.map((c) => c.share));
-  const tv = devices.find((d) => d.id === "tv")!;
+  const tv = devices.find((d) => d.id === "tv") ?? { id: "tv", views: 0, watchTime: 0 };
 
   return (
     <section id="audiencia" className="relative py-24 sm:py-32">
       <div className="pointer-events-none absolute right-0 top-40 h-96 w-96 rounded-full bg-world-500/10 blur-[140px]" />
       <Container className="relative">
         <FadeIn>
-          <SectionHeading index="03" eyebrow={t.eyebrow} title={t.title} highlight={t.highlight} description={t.description} />
+          <SectionHeading index="03" eyebrow={t.eyebrow} title={t.title} highlight={t.highlight} description={description} />
         </FadeIn>
 
         <div className="mt-14 grid gap-4 lg:grid-cols-2">
@@ -71,7 +79,7 @@ export function Audience({ lang, dict }: { lang: Locale; dict: Dictionary }) {
                   const isHome = c.code === "VE";
                   return (
                     <li key={c.code} className="group grid grid-cols-[7.5rem_1fr_3.5rem] items-center gap-3 text-sm sm:grid-cols-[8.5rem_1fr_3.5rem]">
-                      <span className="truncate font-medium text-body-strong">{t.countryNames[c.code]}</span>
+                      <span className="truncate font-medium text-body-strong">{countryName(c.code)}</span>
                       <span className="relative h-6">
                         <span
                           className={cn(

@@ -4,7 +4,7 @@ import { Container } from "@/components/ui/Container";
 import { FadeIn } from "@/components/ui/FadeIn";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { CampaignBuilder } from "./CampaignBuilder";
-import { ageGroups, devices, outsideVenezuelaShare } from "@/data/channel";
+import type { AnalyticsData } from "@/lib/analytics";
 import { formats } from "@/data/formats";
 import { siteConfig } from "@/data/site";
 
@@ -12,12 +12,15 @@ export function CampaignSection({
   lang,
   dict,
   perVideoViews,
+  analytics,
 }: {
   lang: Locale;
   dict: Dictionary;
   perVideoViews: { median: number; mean: number };
+  analytics: AnalyticsData;
 }) {
   const t = dict.builder;
+  const { ageGroups, devices, outsideVenezuelaShare } = analytics.audience;
   const adults = ageGroups.filter((g) => g.id !== "13-17" && g.id !== "18-24").reduce((a, g) => a + g.share, 0);
   const formatNames = Object.fromEntries(
     formats.map((f) => [f.id, { name: dict.formats.items[f.id].name, short: dict.formats.items[f.id].short }])
@@ -36,7 +39,7 @@ export function CampaignSection({
             t={t}
             formatNames={formatNames}
             audience={{
-              tv: Math.round(devices.find((d) => d.id === "tv")!.views),
+              tv: Math.round(devices.find((d) => d.id === "tv")?.views ?? 0),
               abroad: Math.round(outsideVenezuelaShare),
               adults: Math.round(adults),
             }}

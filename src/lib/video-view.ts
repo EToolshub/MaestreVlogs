@@ -1,8 +1,10 @@
 import type { Locale } from "@/i18n/config";
 import type { GalleryVideo } from "@/components/sections/VideoGallery";
 import { videoUrl } from "@/data/channel";
-import { formatSeconds, type LiveVideo } from "./youtube";
-import { formatNumber } from "./utils";
+import type { LiveVideo } from "./youtube";
+import { formatNumber, formatSeconds } from "./utils";
+
+// Solo tipos de ./youtube: este archivo también se usa en el navegador.
 
 /** Un video es "Nuevo" durante sus primeros 7 días. */
 export const isNewVideo = (v: LiveVideo, now: Date) => now.getTime() - Date.parse(v.publishedAt) < 7 * 24 * 3600 * 1000;

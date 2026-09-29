@@ -9,14 +9,15 @@ import { Marquee } from "@/components/ui/Marquee";
 import { YoutubeIcon } from "@/components/icons/SocialIcons";
 import { Viewfinder } from "./Viewfinder";
 import { siteConfig } from "@/data/site";
-import { channelStats, derived, devices } from "@/data/channel";
+import { yearGrowth, type AnalyticsData } from "@/lib/analytics";
 import type { YoutubeData } from "@/lib/youtube";
 import { videoTitle } from "@/lib/video-view";
 import { formatCompact, formatNumber } from "@/lib/utils";
 
-export function Hero({ lang, dict, yt }: { lang: Locale; dict: Dictionary; yt: YoutubeData }) {
+export function Hero({ lang, dict, yt, analytics }: { lang: Locale; dict: Dictionary; yt: YoutubeData; analytics: AnalyticsData }) {
   const t = dict.hero;
-  const tv = devices.find((d) => d.id === "tv")!;
+  const tv = analytics.audience.devices.find((d) => d.id === "tv") ?? { views: 0 };
+  const growth = yearGrowth(yt.subscribers, analytics.year.netSubscribers);
 
   // Los 5 videos más vistos, según los datos más recientes de YouTube.
   const slides = [...yt.videos]
@@ -66,8 +67,8 @@ export function Hero({ lang, dict, yt }: { lang: Locale; dict: Dictionary; yt: Y
 
           <dl className="mt-10 grid max-w-xl grid-cols-3 divide-x divide-white/10 rounded-2xl border border-white/10 bg-ink-900/60 backdrop-blur">
             <TrustStat value={formatNumber(lang, yt.subscribers)} label={t.trustSubs} />
-            <TrustStat value={formatCompact(lang, channelStats.views)} label={t.trustViews} />
-            <TrustStat value={`${formatNumber(lang, derived.engagementRate, 1)}%`} label={t.trustEngagement} />
+            <TrustStat value={formatCompact(lang, yt.totalViews)} label={t.trustViews} />
+            <TrustStat value={`${formatNumber(lang, analytics.year.engagementRate, 1)}%`} label={t.trustEngagement} />
           </dl>
         </div>
 
@@ -77,11 +78,13 @@ export function Hero({ lang, dict, yt }: { lang: Locale; dict: Dictionary; yt: Y
             labels={{ location: t.location, next: t.next, topVideo: t.topVideo, views: t.views }}
           />
 
+{growth && (
           <div className="no-print pointer-events-none absolute -left-4 -top-5 hidden animate-float items-center gap-2 rounded-2xl border border-white/10 bg-ink-850/90 px-4 py-3 text-sm font-semibold shadow-2xl backdrop-blur-md sm:flex lg:-left-10">
             <TrendingUp className="h-4 w-4 text-brand-400" aria-hidden />
-            <span className="text-heading">×{formatNumber(lang, derived.growthMultiple, 1)}</span>
+            <span className="text-heading">×{formatNumber(lang, growth.multiple, growth.digits)}</span>
             <span className="text-body">{t.growthChip}</span>
           </div>
+          )}
           <div
             style={{ animationDelay: "1.4s" }}
             className="no-print pointer-events-none absolute -right-3 top-[38%] hidden animate-float items-center gap-2 rounded-2xl border border-white/10 bg-ink-850/90 px-4 py-3 text-sm font-semibold shadow-2xl backdrop-blur-md sm:flex lg:-right-8"

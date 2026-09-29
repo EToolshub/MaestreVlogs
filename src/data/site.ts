@@ -20,6 +20,13 @@ export const siteConfig = {
     },
   },
 
+  /** Apoyos de la comunidad (sección "Apoya el canal"). */
+  support: {
+    paypalMe: "https://www.paypal.com/paypalme/gabo01ldr",
+    binanceUid: "281448770",
+    amounts: [3, 5, 10, 20, 50],
+  },
+
   social: {
     youtube: "https://www.youtube.com/@MaestreVlogs",
     youtubeHandle: "@MaestreVlogs",

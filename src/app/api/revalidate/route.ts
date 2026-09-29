@@ -1,17 +1,14 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { locales } from "@/i18n/config";
+import { checkAdminSecret } from "@/lib/admin";
 import { YOUTUBE_CACHE_TAG } from "@/lib/youtube";
 
 /**
- * Actualización manual (opcional): si acabas de subir un video y no quieres
- * esperar a la actualización automática de 6 horas, abre
- *   https://TU-DOMINIO/api/revalidate?secret=TU_CLAVE
- * La clave es la variable de entorno REVALIDATE_SECRET en Vercel.
+ * Actualización manual (opcional): fuerza a pedir todo de nuevo a YouTube.
+ *   https://TU-DOMINIO/api/revalidate?secret=TU_ADMIN_SECRET
  */
 export async function GET(request: Request) {
-  const secret = process.env.REVALIDATE_SECRET;
-  const provided = new URL(request.url).searchParams.get("secret");
-  if (!secret || provided !== secret) {
+  if (!checkAdminSecret(new URL(request.url).searchParams.get("secret"))) {
     return Response.json({ ok: false, error: "Clave incorrecta" }, { status: 401 });
   }
   revalidateTag(YOUTUBE_CACHE_TAG, { expire: 0 });

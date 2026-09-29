@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { locales, type Locale } from "@/i18n/config";
 import { cn } from "@/lib/utils";
 
 /** Selector ES / EN que conserva la sección en la que estás (#ancla). */
 export function LangSwitch({ lang, label, className }: { lang: Locale; label: string; className?: string }) {
   const router = useRouter();
+  // Ruta sin el idioma (por ejemplo "/privacidad"), para cambiar de idioma sin salir de la página.
+  const rest = usePathname().replace(/^\/(es|en)(?=\/|$)/, "");
   return (
     <div
       role="group"
@@ -19,13 +21,13 @@ export function LangSwitch({ lang, label, className }: { lang: Locale; label: st
         return (
           <Link
             key={locale}
-            href={`/${locale}`}
+            href={`/${locale}${rest}`}
             hrefLang={locale}
             aria-current={active ? "true" : undefined}
             onClick={(e) => {
               if (active) return;
               e.preventDefault();
-              router.push(`/${locale}${window.location.hash}`);
+              router.push(`/${locale}${rest}${window.location.hash}`);
             }}
             className={cn(
               "rounded-full px-2.5 py-1 font-semibold uppercase tracking-wider transition-colors",

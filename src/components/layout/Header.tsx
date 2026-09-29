@@ -16,12 +16,12 @@ export function Header({ lang, nav }: { lang: Locale; nav: Dictionary["nav"] }) 
   const [open, setOpen] = useState(false);
 
   const links = [
-    { href: "#sobre-mi", label: nav.about },
-    { href: "#numeros", label: nav.stats },
-    { href: "#audiencia", label: nav.audience },
-    { href: "#contenido", label: nav.content },
-    { href: "#formatos", label: nav.formats },
-    { href: "#contacto", label: nav.contact },
+    { href: `/${lang}#sobre-mi`, label: nav.about },
+    { href: `/${lang}#numeros`, label: nav.stats },
+    { href: `/${lang}#audiencia`, label: nav.audience },
+    { href: `/${lang}#contenido`, label: nav.content },
+    { href: `/${lang}#formatos`, label: nav.formats },
+    { href: `/${lang}#contacto`, label: nav.contact },
   ];
 
   useEffect(() => {
@@ -72,7 +72,7 @@ export function Header({ lang, nav }: { lang: Locale; nav: Dictionary["nav"] }) 
 
         <div className="flex items-center gap-2">
           <LangSwitch lang={lang} label={nav.language} />
-          <Button href="#contacto" size="sm" className="hidden sm:inline-flex" icon={<ArrowUpRight className="h-4 w-4" />} iconPosition="right">
+          <Button href={`/${lang}#contacto`} size="sm" className="hidden sm:inline-flex" icon={<ArrowUpRight className="h-4 w-4" />} iconPosition="right">
             {nav.cta}
           </Button>
           <button
@@ -113,7 +113,7 @@ export function Header({ lang, nav }: { lang: Locale; nav: Dictionary["nav"] }) 
                 </li>
               ))}
             </ul>
-            <Button href="#contacto" onClick={() => setOpen(false)} fullWidth size="lg" className="mt-8">
+            <Button href={`/${lang}#contacto`} onClick={() => setOpen(false)} fullWidth size="lg" className="mt-8">
               {nav.cta}
             </Button>
           </motion.nav>

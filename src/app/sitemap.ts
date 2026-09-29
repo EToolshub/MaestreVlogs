@@ -4,9 +4,11 @@ import { statsPeriod } from "@/data/channel";
 import { siteConfig } from "@/data/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return locales.map((lang) => ({
-    url: `${siteConfig.url}/${lang}`,
-    lastModified: statsPeriod.updatedAt,
-    alternates: { languages: Object.fromEntries(locales.map((l) => [l, `${siteConfig.url}/${l}`])) },
-  }));
+  return ["", "/privacidad"].flatMap((path) =>
+    locales.map((lang) => ({
+      url: `${siteConfig.url}/${lang}${path}`,
+      lastModified: statsPeriod.updatedAt,
+      alternates: { languages: Object.fromEntries(locales.map((l) => [l, `${siteConfig.url}/${l}${path}`])) },
+    }))
+  );
 }

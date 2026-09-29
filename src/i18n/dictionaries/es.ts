@@ -532,6 +532,7 @@ export const es = {
     tagline: "Vlogs urbanos desde Caracas, rumbo al mundo.",
     dataNote: "Métricas: YouTube Analytics, actualizado el {date}.",
     rights: "Todos los derechos reservados.",
+    privacy: "Política de privacidad",
   },
 };
 

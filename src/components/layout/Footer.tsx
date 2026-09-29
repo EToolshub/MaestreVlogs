@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries/es";
 import { Logo } from "@/components/brand/Logo";
@@ -23,7 +24,7 @@ export function Footer({ lang, dict }: { lang: Locale; dict: Dictionary }) {
           <p className="mt-3 max-w-xs text-sm text-muted">{t.tagline}</p>
         </div>
         <a
-          href="#apoyo"
+          href={`/${lang}#apoyo`}
           className="inline-flex w-fit items-center gap-2 rounded-full border border-brand-400/40 px-4 py-2 text-sm font-bold text-brand-300 transition-colors hover:bg-brand-400/10"
         >
           ♥ {dict.live.support}
@@ -48,7 +49,12 @@ export function Footer({ lang, dict }: { lang: Locale; dict: Dictionary }) {
         <p>
           © {new Date().getFullYear()} {siteConfig.name}. {t.rights}
         </p>
-        <p>{fill(t.dataNote, { date: formatDate(lang, statsPeriod.updatedAt) })}</p>
+        <p className="flex flex-wrap gap-x-4 gap-y-1">
+          <span>{fill(t.dataNote, { date: formatDate(lang, statsPeriod.updatedAt) })}</span>
+          <Link href={`/${lang}/privacidad`} className="underline underline-offset-4 hover:text-heading">
+            {t.privacy}
+          </Link>
+        </p>
       </Container>
     </footer>
   );

@@ -530,5 +530,6 @@ export const en: Dictionary = {
     tagline: "Street vlogs from Caracas, heading to the world.",
     dataNote: "Metrics: YouTube Analytics, updated {date}.",
     rights: "All rights reserved.",
+    privacy: "Privacy policy",
   },
 };

@@ -116,6 +116,14 @@ cuenta de Google:
 Listo: las pestañas "Últimos 28 días" y "Últimos 12 meses" y la sección de
 audiencia pasan a leer YouTube Analytics cada hora.
 
+### Comprobar que todo funciona
+
+Abre `https://maestrevlogs.vercel.app/api/youtube/status?secret=TU_ADMIN_SECRET`.
+Comprueba en ese momento, sin caché, la clave de API, el último video, el
+permiso de YouTube Analytics, el canal autorizado, las estadísticas de 28 días
+y la audiencia, y dice qué fuente está mostrando la web. Si algo falla, explica
+cómo arreglarlo.
+
 ### Forzar una actualización (opcional)
 
 `https://maestrevlogs.vercel.app/api/revalidate?secret=TU_ADMIN_SECRET`

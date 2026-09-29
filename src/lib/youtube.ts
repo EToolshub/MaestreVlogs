@@ -23,7 +23,9 @@ const POPULAR_REVALIDATE = 21600;
 const SHORT_MAX_SECONDS = 180;
 
 // Acepta también "YOTUBE_API_KEY" (así quedó escrita en Vercel la primera vez).
-const apiKey = () => process.env.YOUTUBE_API_KEY || process.env.YOTUBE_API_KEY || "";
+export const apiKey = () => process.env.YOUTUBE_API_KEY || process.env.YOTUBE_API_KEY || "";
+export const apiKeyVariable = () =>
+  process.env.YOUTUBE_API_KEY ? "YOUTUBE_API_KEY" : process.env.YOTUBE_API_KEY ? "YOTUBE_API_KEY" : null;
 
 export type LiveVideo = {
   id: string;
@@ -351,7 +353,8 @@ export async function getLiveSnapshot(): Promise<LiveSnapshot> {
         VIDEOS_REVALIDATE
       );
       const ids = (uploads.items ?? []).map((i) => i.contentDetails.videoId);
-      const latest = ids.length ? (await videoDetails(ids, key, VIDEOS_REVALIDATE))[0] ?? null : null;
+      // Si los últimos 5 fueron Shorts, se muestra el último video largo de la galería.
+      const latest = (ids.length ? (await videoDetails(ids, key, VIDEOS_REVALIDATE))[0] : undefined) ?? (await getYoutubeData()).videos[0] ?? null;
       return {
         source: "api",
         fetchedAt: new Date().toISOString(),

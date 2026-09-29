@@ -112,6 +112,16 @@ function monthlyFrom(rows: MetricRow[]): MonthlyPoint[] {
   return rows.map((r) => ({ month: r[0], views: r[1], hours: Math.round(r[2] / 60), net: r[3] - r[4] }));
 }
 
+function savedAudience(): Audience {
+  return {
+    ageGroups: savedAgeGroups.map((g) => ({ id: g.id, share: g.share })),
+    gender: savedGender,
+    countries: savedCountries.map((c) => ({ code: c.code, share: c.share })),
+    outsideVenezuelaShare: savedOutside,
+    devices: savedDevices.map((d) => ({ ...d })),
+  };
+}
+
 function savedData(): AnalyticsData {
   const windows = windowsFrom(savedAnalytics.daily);
   const avg = savedAnalytics.avgViewDuration;
@@ -124,13 +134,7 @@ function savedData(): AnalyticsData {
     year: { ...totalsOf(savedAnalytics.monthly), avgViewDurationSeconds: avg.m12 },
     monthly: monthlyFrom(savedAnalytics.monthly),
     nonSubscriberShare: savedAnalytics.nonSubscriberShare,
-    audience: {
-      ageGroups: savedAgeGroups.map((g) => ({ id: g.id, share: g.share })),
-      gender: savedGender,
-      countries: savedCountries.map((c) => ({ code: c.code, share: c.share })),
-      outsideVenezuelaShare: savedOutside,
-      devices: savedDevices.map((d) => ({ ...d })),
-    },
+    audience: savedAudience(),
     audienceIsLive: false,
   };
 }
@@ -140,7 +144,7 @@ function savedData(): AnalyticsData {
 export const analyticsConfigured = () =>
   Boolean(process.env.YOUTUBE_CLIENT_ID && process.env.YOUTUBE_CLIENT_SECRET && process.env.YOUTUBE_REFRESH_TOKEN);
 
-async function accessToken() {
+export async function accessToken() {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
@@ -157,9 +161,9 @@ async function accessToken() {
   return ((await res.json()) as { access_token: string }).access_token;
 }
 
-type Row = Record<string, string | number>;
+export type Row = Record<string, string | number>;
 
-async function report(token: string, params: Record<string, string>): Promise<Row[]> {
+export async function report(token: string, params: Record<string, string>): Promise<Row[]> {
   const url = `https://youtubeanalytics.googleapis.com/v2/reports?${new URLSearchParams({ ids: "channel==MINE", ...params })}`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
@@ -203,6 +207,16 @@ const deviceId: Record<string, Audience["devices"][number]["id"]> = {
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
+/** Consulta secundaria: si falla, se registra y se usa el respaldo (no tumba todo lo demás). */
+async function optional<T>(label: string, task: Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await task;
+  } catch (error) {
+    console.error(`[analytics] ${label} no disponible:`, (error as Error).message);
+    return fallback;
+  }
+}
+
 async function fetchAnalytics(): Promise<AnalyticsData> {
   const token = await accessToken();
   const now = Date.now();
@@ -215,16 +229,17 @@ async function fetchAnalytics(): Promise<AnalyticsData> {
 
   const [dailyRows, monthlyRows, ageRows, countryRows, deviceRows] = await Promise.all([
     report(token, { startDate: iso(now - 64 * DAY), endDate: today, metrics: METRICS, dimensions: "day", sort: "day" }),
-    report(token, { startDate: monthStart(11), endDate: monthStart(0), metrics: METRICS, dimensions: "month", sort: "month" }),
-    report(token, { ...days90, metrics: "viewerPercentage", dimensions: "ageGroup,gender" }),
-    report(token, { ...days90, metrics: "views", dimensions: "country", sort: "-views", maxResults: "50" }),
-    report(token, { ...days90, metrics: "views,estimatedMinutesWatched", dimensions: "deviceType" }),
+    // Con la dimensión "month", YouTube exige que ambas fechas sean el día 1 de un mes.
+    optional("meses", report(token, { startDate: monthStart(11), endDate: monthStart(0), metrics: METRICS, dimensions: "month", sort: "month" }), []),
+    optional("edad y género", report(token, { ...days90, metrics: "viewerPercentage", dimensions: "ageGroup,gender" }), []),
+    optional("países", report(token, { ...days90, metrics: "views", dimensions: "country", sort: "-views", maxResults: "50" }), []),
+    optional("dispositivos", report(token, { ...days90, metrics: "views,estimatedMinutesWatched", dimensions: "deviceType" }), []),
   ]);
 
   const daily = dailyRows.map((r) => toRow(String(r.day), r));
   if (!daily.length) throw new Error("analytics sin datos diarios");
   const windows = windowsFrom(daily);
-  const monthly = monthlyRows.map((r) => toRow(String(r.month), r));
+  const monthly = monthlyRows.length ? monthlyRows.map((r) => toRow(String(r.month), r)) : savedAnalytics.monthly;
 
   const nonSubs = async (startDate: string, endDate: string) => {
     const rows = await report(token, { startDate, endDate, metrics: "views", dimensions: "subscribedStatus" });
@@ -241,11 +256,11 @@ async function fetchAnalytics(): Promise<AnalyticsData> {
   const end28 = windows.dataThrough;
   const start28 = iso(endT - 27 * DAY);
   const [d28, m12, avg28, avgPrev, avg12] = await Promise.all([
-    nonSubs(start28, end28),
-    nonSubs(monthStart(11), today),
-    avgDuration(start28, end28),
-    avgDuration(iso(endT - 55 * DAY), iso(endT - 28 * DAY)),
-    avgDuration(monthStart(11), today),
+    optional("no suscriptores 28 días", nonSubs(start28, end28), 0),
+    optional("no suscriptores 12 meses", nonSubs(monthStart(11), today), 0),
+    optional("duración media 28 días", avgDuration(start28, end28), 0),
+    optional("duración media 28 días anteriores", avgDuration(iso(endT - 55 * DAY), iso(endT - 28 * DAY)), 0),
+    optional("duración media 12 meses", avgDuration(monthStart(11), today), 0),
   ]);
 
   // Audiencia (últimos 90 días)
@@ -276,6 +291,10 @@ async function fetchAnalytics(): Promise<AnalyticsData> {
   const dv = [...devices.values()].reduce((a, d) => a + d.views, 0) || 1;
   const dm = [...devices.values()].reduce((a, d) => a + d.minutes, 0) || 1;
 
+  // Si YouTube no devuelve alguna parte de la audiencia (pasa con pocos datos),
+  // se muestra la audiencia guardada completa para no mezclar periodos.
+  const audienceIsLive = ageRows.length > 0 && countryRows.length > 0 && devices.size > 0;
+
   return {
     source: "analytics",
     updatedAt: new Date(now).toISOString(),
@@ -284,8 +303,8 @@ async function fetchAnalytics(): Promise<AnalyticsData> {
     prev28: { ...windows.prev28, avgViewDurationSeconds: avgPrev || windows.prev28.avgViewDurationSeconds },
     year: { ...totalsOf(monthly), avgViewDurationSeconds: avg12 || totalsOf(monthly).avgViewDurationSeconds },
     monthly: monthlyFrom(monthly),
-    nonSubscriberShare: { d28, m12 },
-    audience: {
+    nonSubscriberShare: { d28: d28 || savedAnalytics.nonSubscriberShare.d28, m12: m12 || savedAnalytics.nonSubscriberShare.m12 },
+    audience: !audienceIsLive ? savedAudience() : {
       ageGroups: Object.values(ageId).map((id) => ({ id, share: round1(ages.get(id) ?? 0) })),
       gender: { male: round1((male / genderTotal) * 100), female: round1((female / genderTotal) * 100) },
       countries: [...top, { code: "OTHER", share: round1(Math.max(0, 100 - topShare)) }],
@@ -296,12 +315,12 @@ async function fetchAnalytics(): Promise<AnalyticsData> {
         watchTime: round1(((devices.get(id)?.minutes ?? 0) / dm) * 100),
       })),
     },
-    audienceIsLive: true,
+    audienceIsLive,
   };
 }
 
 // Se guarda una hora en la caché de Next (compartida entre visitas e idiomas).
-const cachedAnalytics = unstable_cache(fetchAnalytics, ["youtube-analytics-v1"], {
+const cachedAnalytics = unstable_cache(fetchAnalytics, ["youtube-analytics-v2"], {
   revalidate: ANALYTICS_REVALIDATE,
   tags: ["youtube"],
 });

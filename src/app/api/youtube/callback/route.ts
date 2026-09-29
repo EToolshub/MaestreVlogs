@@ -1,25 +1,8 @@
 import { verifyOAuthState } from "@/lib/admin";
 import { siteConfig } from "@/data/site";
+import { escapeHtml as escape, htmlPage as page } from "@/lib/html-page";
 
 export const dynamic = "force-dynamic";
-
-const escape = (s: string) =>
-  s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-
-function page(title: string, body: string, status = 200) {
-  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${escape(title)}</title>
-<style>body{margin:0;background:#0d0d0c;color:#f5f5f0;font:16px/1.6 system-ui,sans-serif}main{max-width:680px;margin:0 auto;padding:40px 20px}h1{font-size:26px;margin:0 0 12px}.ok{color:#ffc21a}.warn{background:#3a1a14;border:1px solid #e5362b;border-radius:12px;padding:12px 16px}textarea{width:100%;box-sizing:border-box;min-height:120px;background:#161614;color:#fff;border:1px solid #34342f;border-radius:12px;padding:12px;font:14px monospace}ol{padding-left:20px}code{background:#1c1c1a;padding:2px 6px;border-radius:6px}button{background:#ffc21a;color:#0d0d0c;border:0;border-radius:999px;padding:10px 18px;font-weight:700;cursor:pointer}</style></head>
-<body><main>${body}</main></body></html>`;
-  return new Response(html, {
-    status,
-    headers: {
-      "content-type": "text/html; charset=utf-8",
-      "cache-control": "no-store",
-      "referrer-policy": "no-referrer",
-      "x-robots-tag": "noindex",
-    },
-  });
-}
 
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;

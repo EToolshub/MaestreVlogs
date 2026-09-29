@@ -1,0 +1,450 @@
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Sistema de diseño MaestreVlogs
+   "La calle, sin filtro": negro asfalto, amarillo de señalización vial y
+   rojo REC de cámara. El azul representa "el mundo" (la diáspora y el
+   próximo destino). El sitio es oscuro por diseño: se ve como un visor de
+   cámara grabando de noche en Caracas.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  color-scheme: dark;
+
+  /* Amarillo señalización (marca) */
+  --color-brand-50: #fffbe6;
+  --color-brand-100: #fff3bf;
+  --color-brand-200: #ffe680;
+  --color-brand-300: #ffd84a;
+  --color-brand-400: #ffc21a; /* amarillo principal */
+  --color-brand-500: #f2ad00;
+  --color-brand-600: #cc8f00;
+  --color-brand-700: #a36f00;
+  --color-brand-800: #7a5300;
+  --color-brand-900: #523700;
+  --color-brand-950: #2e1f00;
+
+  /* Rojo REC */
+  --color-rec-300: #ff8a82;
+  --color-rec-400: #ff453a;
+  --color-rec-500: #e5362b;
+
+  /* Azul "mundo" (diáspora / próximo destino) */
+  --color-world-300: #8db4f9;
+  --color-world-400: #5b93f5;
+  --color-world-500: #3f7ff0;
+
+  /* Negro asfalto */
+  --color-ink-950: #0d0d0c;
+  --color-ink-900: #121211;
+  --color-ink-850: #161614;
+  --color-ink-800: #1c1c1a;
+  --color-ink-700: #262624;
+  --color-ink-600: #34342f;
+  --color-ink-500: #4a4a44;
+
+  --color-whatsapp: #25d366;
+
+  /* Tokens semánticos */
+  --surface-page: var(--color-ink-950);
+  --surface-card: var(--color-ink-850);
+  --surface-alt: var(--color-ink-900);
+  --surface-header: rgb(13 13 12 / 0.78);
+
+  --text-heading: #f5f5f0;
+  --text-body: #b3b3ab;
+  --text-body-strong: #d8d8d1;
+  --text-muted: #9a9a92;
+  --text-subtle: #77776f;
+
+  --border-default: #262624;
+  --border-input: #34342f;
+
+  --grid-line: rgb(255 255 255 / 0.04);
+
+  /* Gráficos: validados con el verificador de paletas (superficie #161614).
+     Un solo acento amarillo + gris de contexto; azul para "fuera de Venezuela". */
+  --chart-accent: #ffc21a;
+  --chart-muted: #6b6b64;
+  --chart-world: #3f7ff0;
+  --chart-grid: #262624;
+  --chart-surface: #161614;
+}
+
+@theme inline {
+  --font-sans: var(--font-manrope);
+  --font-display: var(--font-anton);
+  --font-mono: var(--font-jetbrains);
+
+  --color-brand-50: var(--color-brand-50);
+  --color-brand-100: var(--color-brand-100);
+  --color-brand-200: var(--color-brand-200);
+  --color-brand-300: var(--color-brand-300);
+  --color-brand-400: var(--color-brand-400);
+  --color-brand-500: var(--color-brand-500);
+  --color-brand-600: var(--color-brand-600);
+  --color-brand-700: var(--color-brand-700);
+  --color-brand-800: var(--color-brand-800);
+  --color-brand-900: var(--color-brand-900);
+  --color-brand-950: var(--color-brand-950);
+
+  --color-rec-300: var(--color-rec-300);
+  --color-rec-400: var(--color-rec-400);
+  --color-rec-500: var(--color-rec-500);
+
+  --color-world-300: var(--color-world-300);
+  --color-world-400: var(--color-world-400);
+  --color-world-500: var(--color-world-500);
+
+  --color-ink-950: var(--color-ink-950);
+  --color-ink-900: var(--color-ink-900);
+  --color-ink-850: var(--color-ink-850);
+  --color-ink-800: var(--color-ink-800);
+  --color-ink-700: var(--color-ink-700);
+  --color-ink-600: var(--color-ink-600);
+  --color-ink-500: var(--color-ink-500);
+
+  --color-whatsapp: var(--color-whatsapp);
+
+  --animate-fade-up: fade-up 0.7s ease-out both;
+  --animate-float: float 7s infinite ease-in-out;
+  --animate-marquee: marquee 40s linear infinite;
+  --animate-marquee-reverse: marquee 46s linear infinite reverse;
+  --animate-shine: shine 3.2s ease-in-out infinite;
+  --animate-rec: rec 1.4s steps(1, end) infinite;
+  --animate-scan: scan 7s linear infinite;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0) rotate(0deg);
+    }
+    50% {
+      transform: translateY(-12px) rotate(-1deg);
+    }
+  }
+
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  @keyframes shine {
+    0% {
+      transform: translateX(-120%) skewX(-20deg);
+    }
+    60%,
+    100% {
+      transform: translateX(220%) skewX(-20deg);
+    }
+  }
+
+  /* Parpadeo del punto REC */
+  @keyframes rec {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.15;
+    }
+  }
+
+  /* Línea de escaneo del visor */
+  @keyframes scan {
+    from {
+      transform: translateY(-100%);
+    }
+    to {
+      transform: translateY(1000%);
+    }
+  }
+}
+
+/* Utilidades semánticas */
+@utility bg-surface {
+  background-color: var(--surface-page);
+}
+@utility bg-card {
+  background-color: var(--surface-card);
+}
+@utility bg-alt {
+  background-color: var(--surface-alt);
+}
+@utility bg-header {
+  background-color: var(--surface-header);
+}
+@utility text-heading {
+  color: var(--text-heading);
+}
+@utility text-body {
+  color: var(--text-body);
+}
+@utility text-body-strong {
+  color: var(--text-body-strong);
+}
+@utility text-muted {
+  color: var(--text-muted);
+}
+@utility text-subtle {
+  color: var(--text-subtle);
+}
+@utility border-default {
+  border-color: var(--border-default);
+}
+@utility border-input {
+  border-color: var(--border-input);
+}
+
+/* Texto con degradado amarillo de marca */
+@utility text-gradient-brand {
+  background-image: linear-gradient(100deg, #fff3bf 0%, #ffd84a 30%, #ffc21a 60%, #f2ad00 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+a,
+button,
+label,
+summary {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+body {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  background-color: var(--surface-page);
+  color: var(--text-heading);
+  font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Titulares: tipografía condensada tipo cartel/señalización */
+.font-display {
+  font-family: var(--font-anton), Impact, "Arial Narrow", sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.005em;
+  text-transform: uppercase;
+}
+
+::selection {
+  background: var(--color-brand-400);
+  color: var(--color-ink-950);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand-400);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+input:-webkit-autofill,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: var(--text-heading);
+  box-shadow: 0 0 0 1000px var(--color-ink-800) inset;
+  caret-color: var(--text-heading);
+}
+
+select option {
+  background-color: var(--color-ink-850);
+  color: var(--text-heading);
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+.text-pretty {
+  text-wrap: pretty;
+}
+
+.bg-grid {
+  background-image: linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+.bg-noise {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  opacity: 0.04;
+  mix-blend-mode: overlay;
+}
+
+/* Cinta de precaución (franja amarilla y negra) */
+.bg-caution {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--color-brand-400) 0 14px,
+    var(--color-ink-950) 14px 28px
+  );
+}
+
+/* Líneas de escaneo del visor de cámara */
+.bg-scanlines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgb(255 255 255 / 0.035) 0 1px,
+    transparent 1px 3px
+  );
+}
+
+/* Tarjeta con "spotlight": un brillo amarillo sigue al cursor.
+   Las variables --mx/--my las actualiza <SpotlightCard>. */
+.spotlight {
+  position: relative;
+  isolation: isolate;
+}
+.spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(
+    420px circle at var(--mx, 50%) var(--my, -30%),
+    rgb(255 194 26 / 0.7),
+    transparent 45%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+.spotlight::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    520px circle at var(--mx, 50%) var(--my, -30%),
+    rgb(255 194 26 / 0.07),
+    transparent 40%
+  );
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+  z-index: -1;
+}
+.spotlight:hover::before,
+.spotlight:hover::after,
+.spotlight:focus-within::before,
+.spotlight:focus-within::after {
+  opacity: 1;
+}
+
+/* Texto con contorno para cintas y fondos */
+.text-outline {
+  color: transparent;
+  -webkit-text-stroke: 1px rgb(255 255 255 / 0.22);
+}
+
+/* Esquinas del visor de cámara */
+.viewfinder-corner {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-color: rgb(255 255 255 / 0.85);
+  pointer-events: none;
+}
+
+/* Versión imprimible / PDF del media kit */
+@media print {
+  @page {
+    margin: 12mm;
+  }
+  :root {
+    color-scheme: light;
+    --chart-accent: #b38700;
+    --chart-world: #3f7ff0;
+    --chart-muted: #9a9a92;
+    --chart-grid: #dddddd;
+    --chart-surface: #ffffff;
+    --text-heading: #111111;
+    --text-body: #333333;
+    --text-body-strong: #222222;
+    --text-muted: #555555;
+    --text-subtle: #666666;
+  }
+  html,
+  body {
+    background: #ffffff !important;
+  }
+  /* Las animaciones de entrada dejan opacidad 0 en lo que no se ha visto:
+     al imprimir todo debe aparecer. */
+  main [style*="opacity"],
+  main [style*="transform"] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  header,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+  body,
+  main,
+  main *:not([class*="bg-[var(--chart"]) {
+    background: transparent !important;
+    color: #111 !important;
+    border-color: #ddd !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  main section {
+    break-inside: avoid-page;
+    padding-top: 1.25rem !important;
+    padding-bottom: 1.25rem !important;
+  }
+  .text-gradient-brand {
+    -webkit-text-fill-color: #111;
+  }
+  * {
+    animation: none !important;
+    transition: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

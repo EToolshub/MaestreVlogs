@@ -97,9 +97,8 @@ hace falta tocar componentes.
 | [`src/i18n/dictionaries/es.ts`](src/i18n/dictionaries/es.ts) | Todos los textos en español |
 | [`src/i18n/dictionaries/en.ts`](src/i18n/dictionaries/en.ts) | Todos los textos en inglés (mismas claves) |
 
-Pendiente marcado con `// TODO` en `src/data/site.ts`:
-
-- `url`: tu dominio final, cuando conectes la web en Vercel.
+La web está publicada en **https://maestrevlogs-mediakit.vercel.app**. Si
+compras un dominio propio, cámbialo en `url` de `src/data/site.ts`.
 
 ## Actualizar las métricas (cada 2–3 meses)
 

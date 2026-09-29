@@ -7,8 +7,8 @@ export const siteConfig = {
   name: "MaestreVlogs",
   /** Cómo firmas: aparece en "Quién está detrás" y en los mensajes a marcas. */
   creatorName: "Gabo",
-  // TODO: cambia por tu dominio final cuando conectes la web en Vercel.
-  url: "https://maestrevlogs.vercel.app",
+  // Dominio público en Vercel. Si compras un dominio propio, cámbialo aquí.
+  url: "https://maestrevlogs-mediakit.vercel.app",
 
   contact: {
     email: "1maestre1contact@gmail.com",

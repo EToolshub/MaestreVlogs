@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
 import { Anton, JetBrains_Mono, Manrope } from "next/font/google";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import "../globals.css";
 import { hasLocale, locales } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
@@ -89,6 +90,7 @@ export default async function RootLayout({ children, params }: LayoutProps<"/[la
           <Footer lang={lang} dict={dict} />
         </MotionProvider>
       </body>
+      {siteConfig.googleAnalyticsId && <GoogleAnalytics gaId={siteConfig.googleAnalyticsId} />}
     </html>
   );
 }

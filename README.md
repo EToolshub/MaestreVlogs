@@ -137,7 +137,7 @@ hace falta tocar componentes.
 
 | Archivo | Qué contiene |
 | --- | --- |
-| [`src/data/site.ts`](src/data/site.ts) | Nombre, correo, **WhatsApp**, redes, dominio, **PayPal y Binance** (`support`) |
+| [`src/data/site.ts`](src/data/site.ts) | Nombre, correo, **WhatsApp**, redes, dominio, **PayPal y Binance** (`support`), ID de **Google Analytics** (`googleAnalyticsId`) |
 | [`src/data/channel.ts`](src/data/channel.ts) | Datos guardados de respaldo (si YouTube no responde) y títulos en inglés de los videos |
 | [`src/data/formats.ts`](src/data/formats.ts) | Formatos y paquetes del configurador |
 | [`src/i18n/dictionaries/es.ts`](src/i18n/dictionaries/es.ts) | Todos los textos en español |

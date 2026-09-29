@@ -9,6 +9,8 @@ export const siteConfig = {
   creatorName: "Gabo",
   // Dominio público en Vercel. Si compras un dominio propio, cámbialo aquí.
   url: "https://maestrevlogs.vercel.app",
+  /** ID de medición de Google Analytics 4 (vacío = sin analítica). */
+  googleAnalyticsId: "G-X59X3P6CND",
 
   contact: {
     email: "1maestre1contact@gmail.com",
